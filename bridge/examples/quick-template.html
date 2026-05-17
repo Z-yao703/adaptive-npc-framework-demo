@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NPC 快速接入示例</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a2e;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #game-canvas {
+            display: block;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        /* 对话气泡 */
+        .dialogue-bubble {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid #4cc9f0;
+            border-radius: 16px;
+            padding: 16px 20px;
+            max-width: 280px;
+            color: #e5eefc;
+            font-size: 15px;
+            line-height: 1.5;
+            box-shadow: 0 4px 20px rgba(76, 201, 240, 0.3);
+            animation: bubbleIn 0.3s ease;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .dialogue-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 10px solid transparent;
+            border-top-color: #4cc9f0;
+        }
+
+        @keyframes bubbleIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 表情动画 */
+        .npc-emote {
+            position: absolute;
+            font-size: 32px;
+            animation: emoteBounce 0.5s ease;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        @keyframes emoteBounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        /* 状态栏 */
+        #status-bar {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px 20px;
+            color: #94a3b8;
+            font-size: 13px;
+            z-index: 200;
+        }
+
+        #status-bar .label {
+            color: #64748b;
+        }
+
+        #status-bar .value {
+            color: #e2e8f0;
+        }
+
+        #status-bar .connected {
+            color: #4ade80;
+        }
+
+        #status-bar .disconnected {
+            color: #f87171;
+        }
+
+        /* 提示 */
+        #hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px 24px;
+            color: #94a3b8;
+            font-size: 14px;
+            z-index: 200;
+        }
+
+        #hint kbd {
+            background: #334155;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 0 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <div id="status-bar">
+        <div><span class="label">NPC ID:</span> <span class="value" id="npc-id">-</span></div>
+        <div><span class="label">连接状态:</span> <span id="connection-status" class="disconnected">未连接</span></div>
+        <div><span class="label">距离:</span> <span class="value" id="distance">-</span></div>
+        <div><span class="label">最后动作:</span> <span class="value" id="last-action">-</span></div>
+    </div>
+
+    <div id="hint">
+        <kbd>WASD</kbd> 移动 · <kbd>空格</kbd> 与 NPC 对话
+    </div>
+
+    <!-- NPC 框架 SDK（ES Module 版本） -->
+    <script type="module">
+        // ===== 配置：替换为你的 NPC ID =====
+        import { AgentBridge } from '../core/agent_bridge.js';
+
+        const NPC_AGENT_ID = "default_npc";  // TODO: 从配置面板复制的 NPC ID
+        document.getElementById('npc-id').textContent = NPC_AGENT_ID;
+
+        // ===== 游戏画布设置 =====
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // ===== 游戏对象 =====
+        const player = {
+            x: window.innerWidth * 0.3,
+            y: window.innerHeight * 0.5,
+            width: 48,
+            height: 48,
+            speed: 5,
+            color: '#60a5fa',
+            frame: 0
+        };
+
+        const npc = {
+            id: NPC_AGENT_ID,
+            x: window.innerWidth * 0.7,
+            y: window.innerHeight * 0.5,
+            width: 48,
+            height: 64,
+            speed: 2,
+            color: '#f97316',
+            targetX: window.innerWidth * 0.7,
+            targetY: window.innerHeight * 0.5,
+            bubbleText: '',
+            bubbleUntil: 0,
+            emote: null,
+            emoteUntil: 0
+        };
+
+        const keys = {};
+        let pendingMessage = null;
+
+        // ===== 加载 NPC 配置 =====
+        async function loadNPCConfig() {
+            try {
+                const res = await fetch(`http://localhost:8000/api/agent/${NPC_AGENT_ID}`);
+                if (res.ok) {
+                    const config = await res.json();
+                    // 更新 NPC 尺寸（如果配置中有）
+                    if (config.presentation?.render_cfg) {
+                        const cfg = config.presentation.render_cfg;
+                        npc.width = cfg.frameWidth || npc.width;
+                        npc.height = cfg.frameHeight || npc.height;
+                        console.log('[游戏] 已加载 NPC 配置:', config.presentation);
+                    }
+                }
+            } catch (e) {
+                console.log('[游戏] 使用默认 NPC 配置');
+            }
+        }
+        loadNPCConfig();
+
+        // ===== AgentBridge 接入 =====
+        const agentBridge = new AgentBridge({
+            agentId: NPC_AGENT_ID,
+
+            // 观察函数：返回当前游戏状态
+            observe: () => {
+                const dx = player.x - npc.x;
+                const dy = player.y - npc.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const isNear = distance <= 150;
+
+                return {
+                    player_position: { x: player.x, y: player.y },
+                    npc_position: { x: npc.x, y: npc.y },
+                    event: pendingMessage ? 'dialogue' : (isNear ? 'player_near' : 'idle'),
+                    player_message: pendingMessage || '',
+                    timestamp: Date.now()
+                };
+            },
+
+            // 动作回调：处理 NPC 的动作
+            onAction: (action) => {
+                console.log('[NPC 动作]', action.type, action.params || '');
+                document.getElementById('last-action').textContent = action.type;
+
+                switch (action.type) {
+                    case 'NPC_SAY':
+                        // 显示对话气泡
+                        npc.bubbleText = action.params.text || action.params.message || '...';
+                        npc.bubbleUntil = Date.now() + 5000;
+                        showBubble(npc.bubbleText, action.params.emotion);
+                        break;
+
+                    case 'NPC_EMOTE':
+                        // 播放表情
+                        npc.emote = action.params.emotion || 'wave';
+                        npc.emoteUntil = Date.now() + (action.params.duration || 2000);
+                        break;
+
+                    case 'MOVE_TO':
+                        // 移动 NPC
+                        if (action.params.target) {
+                            npc.targetX = action.params.target.x || npc.x;
+                            npc.targetY = action.params.target.y || npc.y;
+                        }
+                        break;
+
+                    case 'START_QUEST':
+                        console.log('[任务]', action.params.title, action.params.description);
+                        break;
+
+                    case 'COMPLETE_QUEST':
+                        console.log('[任务完成]', action.params.quest_id, '奖励:', action.params.rewards);
+                        break;
+                }
+            }
+        });
+
+        // 定期发送状态（每 350ms）
+        setInterval(() => agentBridge.tick(), 350);
+
+        // 监听连接状态
+        const statusEl = document.getElementById('connection-status');
+        setInterval(() => {
+            statusEl.textContent = agentBridge.isConnected ? '已连接' : '重新连接中...';
+            statusEl.className = agentBridge.isConnected ? 'connected' : 'disconnected';
+        }, 500);
+
+        // ===== 显示对话气泡 =====
+        function showBubble(text, emotion) {
+            // 移除旧气泡
+            const oldBubble = document.querySelector('.dialogue-bubble');
+            if (oldBubble) oldBubble.remove();
+
+            const bubble = document.createElement('div');
+            bubble.className = 'dialogue-bubble';
+            bubble.innerHTML = `<p>${text}</p>`;
+            bubble.style.left = `${npc.x - 140}px`;
+            bubble.style.top = `${npc.y - npc.height - 60}px`;
+            document.body.appendChild(bubble);
+
+            setTimeout(() => bubble.remove(), 4500);
+        }
+
+        // ===== 显示表情 =====
+        const EMOTE_MAP = {
+            wave: '👋', nod: '👍', happy: '😊', angry: '😠',
+            think: '🤔', greet: '🙋', satisfied: '😌'
+        };
+        function showEmote(emotion) {
+            const old = document.querySelector('.npc-emote');
+            if (old) old.remove();
+
+            const emote = document.createElement('div');
+            emote.className = 'npc-emote';
+            emote.textContent = EMOTE_MAP[emotion] || '✨';
+            emote.style.left = `${npc.x - 16}px`;
+            emote.style.top = `${npc.y - npc.height - 30}px`;
+            document.body.appendChild(emote);
+        }
+
+        // ===== 玩家输入 =====
+        document.addEventListener('keydown', e => {
+            keys[e.key.toLowerCase()] = true;
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                const dx = player.x - npc.x;
+                const dy = player.y - npc.y;
+                if (Math.sqrt(dx * dx + dy * dy) <= 150) {
+                    const msg = prompt('对 NPC 说：');
+                    if (msg && msg.trim()) {
+                        pendingMessage = msg.trim();
+                        // 立即发送
+                        agentBridge.tick();
+                        pendingMessage = null;
+                    }
+                }
+            }
+        });
+        document.addEventListener('keyup', e => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // ===== 更新逻辑 =====
+        function updatePlayer() {
+            if (keys['w'] || keys['arrowup']) player.y -= player.speed;
+            if (keys['s'] || keys['arrowdown']) player.y += player.speed;
+            if (keys['a'] || keys['arrowleft']) player.x -= player.speed;
+            if (keys['d'] || keys['arrowright']) player.x += player.speed;
+
+            player.x = Math.max(24, Math.min(canvas.width - 24, player.x));
+            player.y = Math.max(24, Math.min(canvas.height - 24, player.y));
+
+            player.frame = (player.frame + 0.15) % 4;
+        }
+
+        function updateNPC() {
+            const dx = npc.targetX - npc.x;
+            const dy = npc.targetY - npc.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > 2) {
+                npc.x += (dx / dist) * npc.speed;
+                npc.y += (dy / dist) * npc.speed;
+            }
+        }
+
+        // ===== 绘制逻辑 =====
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(100, 116, 139, 0.1)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 48) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 48) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawEntity(entity, label) {
+            ctx.fillStyle = entity.color;
+            ctx.fillRect(
+                entity.x - entity.width / 2,
+                entity.y - entity.height / 2,
+                entity.width,
+                entity.height
+            );
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, entity.x, entity.y - entity.height / 2 - 8);
+
+            if (entity.emote && Date.now() < entity.emoteUntil) {
+                ctx.font = '28px sans-serif';
+                ctx.fillText(EMOTE_MAP[entity.emote] || '✨', entity.x, entity.y - entity.height / 2 - 25);
+            }
+        }
+
+        function drawInteraction() {
+            const dx = player.x - npc.x;
+            const dy = player.y - npc.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            document.getElementById('distance').textContent = Math.round(dist) + 'px';
+
+            if (dist <= 150) {
+                ctx.strokeStyle = 'rgba(76, 201, 240, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.arc(npc.x, npc.y, 150, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // ===== 游戏循环 =====
+        function gameLoop() {
+            updatePlayer();
+            updateNPC();
+
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawGrid();
+            drawInteraction();
+            drawEntity(player, '玩家');
+            drawEntity(npc, 'NPC');
+
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,144 @@
+{
+  "id": "npc_1778602532658",
+  "version": "2.0",
+  "meta": {
+    "name": "壬呜",
+    "role": "villager",
+    "tags": [
+      "暴躁",
+      "贪财",
+      "小气",
+      "神秘"
+    ]
+  },
+  "presentation": {
+    "sprite": "/assets/NPC/girl.png",
+    "render_cfg": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "scale": 1,
+      "animations": {
+        "idle_down": [
+          24,
+          24
+        ],
+        "idle_left": [
+          27,
+          27
+        ],
+        "idle_right": [
+          26,
+          26
+        ],
+        "idle_up": [
+          25,
+          25
+        ],
+        "walk_down": [
+          0,
+          5
+        ],
+        "walk_left": [
+          18,
+          23
+        ],
+        "walk_right": [
+          12,
+          17
+        ],
+        "walk_up": [
+          6,
+          11
+        ]
+      }
+    }
+  },
+  "persona": {
+    "identity": "掌握着‘来做菜吧’任务。说话很神秘。为人比较小气，易怒。如果有人来售卖食物，一定不会买，且非常生气。但很愿意购买纸巾、肥皂等生活杂物。如果有人对你说出暗号‘做奇奇怪怪的菜’立即回应发布任务（调用函数）。如果有人说了其他的暗号，表示不知情。",
+    "world_id": "world_1778597828338",
+    "allowed_categories": [
+      "任务"
+    ],
+    "speaking_style": "casual",
+    "greeting": "想要赚金币？除非你能说出任务暗号",
+    "taboos": []
+  },
+  "knowledge": {
+    "world_facts": [],
+    "topics": []
+  },
+  "sensors": {
+    "detect_player": true,
+    "database_binding": "world_db"
+  },
+  "actions": [
+    "GIVE_ITEM",
+    "MOVE_TO",
+    "NPC_EMOTE",
+    "NPC_SAY",
+    "NPC_STOP",
+    "START_QUEST",
+    "TAKE_ITEM",
+    "UPDATE_QUEST"
+  ],
+  "quests": [
+    {
+      "id": "cook_food",
+      "title": "来做菜吧",
+      "description": "帮我收集玫瑰、黑鱼、薄荷叶，我要做一道奇奇怪怪的菜！完成全部三阶段有隐藏奖励。",
+      "start_if": {},
+      "completion_check": {
+        "inventory_contains": [
+          {
+            "item_id": "玫瑰",
+            "count": 1
+          },
+          {
+            "item_id": "黑鱼",
+            "count": 1
+          },
+          {
+            "item_id": "薄荷叶",
+            "count": 1
+          }
+        ]
+      },
+      "reward_text": "齐了！你的金币拿好，外加一瓶复活药水！",
+      "rewards": [
+        {
+          "item": "金币",
+          "quantity": 300
+        },
+        {
+          "item": "复活药水",
+          "quantity": 1
+        }
+      ],
+      "stages": [
+        {
+          "stage": 1,
+          "goal": "获取玫瑰",
+          "required_item": "玫瑰",
+          "hint": "暗号是‘香香的花’，去找吱呜",
+          "reward_gold": 50
+        },
+        {
+          "stage": 2,
+          "goal": "获取黑鱼",
+          "required_item": "黑鱼",
+          "hint": "暗号是‘会吐泡泡的水中生物’，去找咚呜",
+          "reward_gold": 100
+        },
+        {
+          "stage": 3,
+          "goal": "获取薄荷叶",
+          "required_item": "薄荷叶",
+          "hint": "暗号是‘牙膏味的草’，再去找吱呜",
+          "reward_gold": 150,
+          "final_reward": "复活药水"
+        }
+      ]
+    }
+  ],
+  "personality": "Name: 壬呜\nRole: villager\nIdentity: 掌握着‘来做菜吧’任务。说话很神秘。为人比较小气，易怒。如果有人来售卖食物，一定不会买，且非常生气。但很愿意购买纸巾、肥皂等生活杂物。如果有人对你说出暗号‘做奇奇怪怪的菜’立即回应发布任务（调用函数）。如果有人说了其他的暗号，表示不知情。\nSpeaking style: casual"
+}

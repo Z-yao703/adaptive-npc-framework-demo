@@ -1,0 +1,6 @@
+{
+  "npc_id": "herbalist_01",
+  "traits": ["wise", "reclusive"],
+  "speech_style": "elder",
+  "area_weights": {"forest": 0.8, "town": 0.2}
+}

@@ -1,0 +1,11 @@
+{
+    "version": "1.0",
+    "description": "NPC 注册表 - 集中管理所有 NPC",
+    "default_agent": "default_npc",
+    "agents": [
+        "default_npc",
+        "npc_1778601114006",
+        "npc_1778602052720",
+        "npc_1778602532658"
+    ]
+}

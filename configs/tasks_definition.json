@@ -1,0 +1,3 @@
+{
+  "quest_01": {"steps": ["find_herb", "trade_scroll"], "reward": "farm_boost"}
+}

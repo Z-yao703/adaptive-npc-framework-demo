@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>混沌旅馆</title>
+    <link rel="stylesheet" href="src/styles/main.css">
+</head>
+
+<body>
+    <!-- 游戏画布容器 -->
+    <div id="game-container"></div>
+
+    <!-- 顶部 HUD (固定位置，不受摄像机影响) -->
+    <div id="hud">
+        <!-- 左侧：游戏标题 -->
+        <div id="hud-title">混沌旅馆</div>
+
+        <!-- 中间：警惕性进度条 -->
+        <div id="hud-suspicion">
+            <span class="hud-label">警惕性</span>
+            <div class="progress-bar">
+                <div class="progress-fill" id="suspicion-fill"></div>
+            </div>
+        </div>
+
+        <!--右侧：资金显示 -->
+        <div id="hud-money">
+            <span class="money-icon">💰</span>
+            <span class="money-amount" id="money-amount">0</span>
+        </div>
+    </div>
+
+    <!-- 右侧动作栏 -->
+    <div id="action-bar">
+        <button id="btn-backpack" class="action-btn" title="背包">🎒</button>
+        <button id="btn-deduction" class="action-btn" title="推论">🔍</button>
+        <button id="btn-scripts" class="action-btn" title="剧本">📜</button>
+    </div>
+
+    <!-- 背包面板 (初始隐藏) -->
+    <div id="panel-backpack" class="panel hidden">
+        <div class="panel-header">
+            <span class="panel-title">背包</span>
+            <button class="panel-close" data-panel="backpack">✕</button>
+        </div>
+        <div class="panel-content">
+            <p>背包为空</p>
+        </div>
+    </div>
+
+    <!--推论面板 (初始隐藏) -->
+    <div id="panel-deduction" class="panel hidden">
+        <div class="panel-header">
+            <span class="panel-title">推论</span>
+            <button class="panel-close" data-panel="deduction">✕</button>
+        </div>
+        <div class="panel-content">
+            <div id="quiz-content"><p>游戏开始后可用</p></div>
+        </div>
+    </div>
+
+    <!-- 剧本面板 (初始隐藏) -->
+    <div id="panel-scripts" class="panel hidden">
+        <div class="panel-header">
+            <span class="panel-title">历史剧本</span>
+            <button class="panel-close" data-panel="scripts">✕</button>
+        </div>
+        <div class="panel-content">
+            <p>暂无历史剧本</p>
+        </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
