@@ -1,0 +1,326 @@
+# ============================================================
+# Adaptive NPC Framework - 通信协议定义 (协议源文件)
+# ============================================================
+# 这是框架的"单一真相源"，所有前端和后端的协议实现都基于此文件生成
+#
+# 文件结构：
+# 1. metadata          - 元数据（版本、描述）
+# 2. message_types     - 消息类型定义
+# 3. action_types      - Action类型定义（核心）
+# 4. action_params     - Action参数规范
+# 5. event_types       - 游戏事件类型（前端专用）
+# 6. validation        - 验证规则
+#
+# 修改指南：
+# 1. 添加新Action类型：在 action_types 下添加条目
+# 2. 修改Action参数：在 action_params 下更新相关定义
+# 3. 更新消息类型：在 message_types 下修改
+# 4. 运行生成脚本：python generate_protocols.py
+# ============================================================
+
+# ==================== 元数据 ====================
+metadata:
+  version: "2.0.0"
+  description: "Adaptive NPC Framework 通信协议"
+  last_updated: "2026-05-01"
+  maintainer: "项目开发者"
+
+# ==================== 消息类型定义 ====================
+message_types:
+  # 客户端 → 服务器消息类型（前端发送给后端）
+  client:
+    STATE_UPDATE: 
+      value: "STATE_UPDATE"
+      description: "游戏状态更新消息"
+      example:
+        type: "STATE_UPDATE"
+        state:
+          player_position: { x: 100, y: 200 }
+          npc_position: { x: 300, y: 200 }
+          player_id: "player_001"
+          event: "idle"
+          player_message: ""
+          timestamp: 1234567890
+    
+    PING:
+      value: "PING"
+      description: "心跳请求消息"
+      frontend_only: true  # 仅前端使用
+  
+  # 服务器 → 客户端消息类型（后端发送给前端）
+  server:
+    INIT_ACK:
+      value: "INIT_ACK"
+      description: "初始化确认"
+      backend_only: true  # 仅后端使用
+    
+    ACTIONS:
+      value: "ACTIONS"
+      description: "Action列表消息"
+      example:
+        type: "ACTIONS"
+        actions:
+          - type: "NPC_SAY"
+            params:
+              npc_id: "npc_001"
+              text: "你好，旅行者！"
+              emotion: "happy"
+    
+    PONG:
+      value: "PONG"
+      description: "心跳响应"
+      frontend_only: true
+    
+    CONFIG_UPDATE:
+      value: "CONFIG_UPDATE"
+      description: "配置热更新"
+
+# ==================== Action类型定义 ====================
+action_types:
+  # 对话类Action - NPC与玩家交互
+  dialogue:
+    NPC_SAY:
+      value: "NPC_SAY"
+      description: "NPC说话/显示对话气泡"
+      tags: [ "核心", "常用" ]
+    
+    NPC_EMOTE:
+      value: "NPC_EMOTE"
+      description: "NPC表情动作"
+      tags: [ "视觉", "动画" ]
+  
+  # 移动类Action - NPC位置控制
+  movement:
+    MOVE_TO:
+      value: "MOVE_TO"
+      description: "NPC移动到目标位置"
+      tags: [ "核心", "常用" ]
+    
+    NPC_STOP:
+      value: "NPC_STOP"
+      description: "NPC停止移动"
+      tags: [ "移动控制" ]
+    
+    FOLLOW:
+      value: "FOLLOW"
+      description: "NPC跟随目标"
+      tags: [ "AI行为" ]
+  
+  # 交互类Action - 物品交易
+  interaction:
+    START_TRADE:
+      value: "START_TRADE"
+      description: "打开交易界面"
+      tags: [ "经济系统" ]
+    
+    GIVE_ITEM:
+      value: "GIVE_ITEM"
+      description: "NPC给予物品"
+      tags: [ "物品系统" ]
+    
+    TAKE_ITEM:
+      value: "TAKE_ITEM"
+      description: "NPC拿走物品"
+      tags: [ "物品系统" ]
+  
+  # 任务类Action - 任务管理
+  quest:
+    START_QUEST:
+      value: "START_QUEST"
+      description: "开始新任务"
+      tags: [ "任务系统" ]
+    
+    UPDATE_QUEST:
+      value: "UPDATE_QUEST"
+      description: "更新任务进度"
+      tags: [ "任务系统" ]
+    
+    COMPLETE_QUEST:
+      value: "COMPLETE_QUEST"
+      description: "完成任务"
+      tags: [ "任务系统" ]
+
+  # 系统类Action - 框架控制
+  system:
+    ERROR:
+      value: "ERROR"
+      description: "错误信息"
+      tags: [ "系统", "错误处理" ]
+    
+    CONFIG_UPDATE:
+      value: "CONFIG_UPDATE"
+      description: "配置热更新"
+      tags: [ "系统", "配置" ]
+
+# ==================== Action参数定义 ====================
+action_params:
+  # NPC_SAY Action的参数规范
+  NPC_SAY:
+    description: "NPC说话Action的参数"
+    required_params:
+      npc_id:
+        type: "string"
+        description: "NPC的唯一标识符"
+        example: "npc_001"
+      
+      text:
+        type: "string"
+        description: "NPC要说的文本内容"
+        example: "你好，旅行者！欢迎来到我们的村庄。"
+    
+    optional_params:
+      emotion:
+        type: "string"
+        description: "NPC说话时的情绪"
+        default: "neutral"
+        enum: [ "neutral", "happy", "angry", "sad", "surprised", "thinking" ]
+        example: "happy"
+  
+  # NPC_EMOTE Action的参数规范
+  NPC_EMOTE:
+    description: "NPC表情动作参数"
+    required_params:
+      npc_id:
+        type: "string"
+        description: "NPC的唯一标识符"
+      
+      emotion:
+        type: "string"
+        description: "表情类型"
+        enum: [ "wave", "nod", "shrug", "laugh", "cry", "greet", "satisfied" ]
+        example: "wave"
+    
+    optional_params:
+      duration:
+        type: "number"
+        description: "动作持续时间（毫秒）"
+        default: 2000
+        example: 3000
+  
+  # MOVE_TO Action的参数规范
+  MOVE_TO:
+    description: "NPC移动参数"
+    required_params:
+      npc_id:
+        type: "string"
+        description: "NPC的唯一标识符"
+      
+      x:
+        type: "number"
+        description: "目标位置的X坐标"
+        example: 150.5
+      
+      y:
+        type: "number"
+        description: "目标位置的Y坐标"
+        example: 220.3
+    
+    optional_params:
+      speed:
+        type: "number"
+        description: "移动速度（像素/帧）"
+        default: 3.0
+        example: 5.0
+  
+  # FOLLOW Action的参数规范
+  FOLLOW:
+    description: "NPC跟随参数"
+    required_params:
+      npc_id:
+        type: "string"
+        description: "NPC的唯一标识符"
+      
+      target_id:
+        type: "string"
+        description: "要跟随的目标标识（玩家或其他NPC）"
+        example: "player_001"
+    
+    optional_params:
+      distance:
+        type: "number"
+        description: "跟随距离（像素）"
+        default: 50.0
+        example: 30.0
+  
+  # 任务相关Action的通用参数
+  QUEST_COMMON:
+    description: "任务Action的通用参数"
+    required_params:
+      npc_id:
+        type: "string"
+        description: "NPC的唯一标识符"
+      
+      quest_id:
+        type: "string"
+        description: "任务的唯一标识符"
+        example: "quest_collect_herbs"
+      
+      title:
+        type: "string"
+        description: "任务标题"
+        example: "收集草药"
+      
+      description:
+        type: "string"
+        description: "任务描述"
+        example: "请帮我收集5株草药，我会给你丰厚的报酬。"
+    
+    optional_params:
+      progress:
+        type: "number"
+        description: "任务进度（0-1的小数）"
+        default: 0.0
+        example: 0.5
+      
+      rewards:
+        type: "array"
+        description: "任务奖励列表"
+        default: []
+        example: [ { "item": "gold", "amount": 100 } ]
+
+# ==================== 游戏事件类型 ====================
+event_types:
+  description: "游戏事件类型，主要用于前端状态管理"
+  events:
+    PLAYER_NEAR:
+      value: "player_near"
+      description: "玩家靠近NPC"
+    
+    PLAYER_FAR:
+      value: "player_far"
+      description: "玩家远离NPC"
+    
+    DIALOGUE_START:
+      value: "dialogue_start"
+      description: "对话开始"
+    
+    DIALOGUE_END:
+      value: "dialogue_end"
+      description: "对话结束"
+    
+    NPC_CLICKED:
+      value: "npc_clicked"
+      description: "NPC被玩家点击"
+    
+    STATE_CHANGED:
+      value: "state_changed"
+      description: "游戏状态改变"
+
+# ==================== 验证规则 ====================
+validation:
+  message_format:
+    required_fields: [ "type", "timestamp" ]
+    type_field: "type"
+    timestamp_field: "timestamp"
+  
+  action_format:
+    required_fields: [ "type", "params" ]
+    type_field: "type"
+    params_field: "params"
+  
+  param_types:
+    string: "typeof value === 'string'"
+    number: "typeof value === 'number' && !isNaN(value)"
+    boolean: "typeof value === 'boolean'"
+    array: "Array.isArray(value)"
+    object: "value !== null && typeof value === 'object' && !Array.isArray(value)"

@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+websockets
+sse-starlette
+python-multipart
+starlette
+python-dotenv
+
+# Embedding 向量匹配（暗号/物品语义匹配）
+sentence-transformers>=2.2.0
+
